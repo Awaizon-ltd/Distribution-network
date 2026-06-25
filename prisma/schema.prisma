@@ -1,0 +1,571 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum NodeStatus {
+  INACTIVE    // Not yet activated
+  ACTIVE      // Participating in ecosystem
+  SUSPENDED   // Flagged / admin action
+}
+
+enum MissionType {
+  DAILY
+  WEEKLY
+  SOCIAL
+  COMMUNITY
+  REFERRAL
+  SPECIAL
+}
+
+enum MissionStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  ARCHIVED
+}
+
+enum CompletionStatus {
+  STARTED
+  COMPLETED
+  CLAIMED
+}
+
+enum SocialPlatform {
+  TWITTER
+  TELEGRAM
+  DISCORD
+}
+
+enum SocialStatus {
+  PENDING
+  VERIFIED
+  DISCONNECTED
+}
+
+enum NewsStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NewsCategory {
+  ANNOUNCEMENT
+  UPDATE
+  PARTNERSHIP
+  COMMUNITY
+  TECHNICAL
+}
+
+enum NotificationType {
+  MISSION_COMPLETE
+  REFERRAL_REWARD
+  RANK_CHANGE
+  NEWS
+  ACHIEVEMENT
+  NODE_STATUS
+  LEVEL_UP
+  MILESTONE
+  SYSTEM
+}
+
+enum RewardType {
+  POINTS
+  BONUS_MULTIPLIER
+  ACHIEVEMENT_BADGE
+}
+
+enum AchievementCategory {
+  ONBOARDING
+  MISSIONS
+  REFERRALS
+  SOCIAL
+  SCORE
+  LEVEL
+  SPECIAL
+}
+
+enum AchievementTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  LEGENDARY
+}
+
+enum ScoreSource {
+  MISSION_DAILY
+  MISSION_WEEKLY
+  MISSION_SPECIAL
+  MISSION_COMMUNITY
+  MISSION_REFERRAL
+  MISSION_SOCIAL
+  REFERRAL_ACTIVATION
+  REFERRAL_MILESTONE
+  SOCIAL_CONNECT
+  ACHIEVEMENT
+  CHECK_IN
+  NODE_ACTIVATION
+  ADMIN
+  EVENT
+}
+
+enum ReputationChangeReason {
+  MISSION_COMPLETED
+  SOCIAL_CONNECTED
+  REFERRAL_VERIFIED
+  SUSPICIOUS_IP
+  FAKE_REFERRAL_DETECTED
+  ABUSE_DETECTED
+  ADMIN_ADJUSTMENT
+  ACCOUNT_ACTIVITY
+}
+
+enum AuditAction {
+  USER_CREATED
+  USER_UPDATED
+  USER_SUSPENDED
+  USER_BANNED
+  NODE_ACTIVATED
+  NODE_SUSPENDED
+  NODE_SCORE_ADDED
+  NODE_LEVEL_UP
+  MISSION_COMPLETED
+  MISSION_CLAIMED
+  REFERRAL_CREATED
+  REFERRAL_REWARDED
+  REFERRAL_MILESTONE_REACHED
+  POINTS_ADDED
+  POINTS_DEDUCTED
+  SOCIAL_CONNECTED
+  SOCIAL_DISCONNECTED
+  ACHIEVEMENT_UNLOCKED
+  REPUTATION_CHANGED
+  ADMIN_ACTION
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id               String     @id @default(cuid())
+  walletAddress    String     @unique
+  referralCode     String     @unique
+  role             UserRole   @default(USER)
+  status           UserStatus @default(ACTIVE)
+  totalPoints      BigInt     @default(0)
+  weeklyPoints     BigInt     @default(0)
+  referralPoints   BigInt     @default(0)
+  globalRank       Int?
+  weeklyRank       Int?
+  referralRank     Int?
+  nodeRank         Int?
+  lastActivityAt   DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  authNonces        AuthNonce[]
+  refreshTokens     RefreshToken[]
+  node              Node?
+  socialConnections SocialConnection[]
+  missions          MissionCompletion[]
+  pointTransactions PointTransaction[]
+  referralsMade     Referral[]         @relation("ReferralBy")
+  referralUsed      Referral?          @relation("ReferralTo")
+  notifications     Notification[]
+  achievements      UserAchievement[]
+  auditLogs         AuditLog[]
+
+  @@index([walletAddress])
+  @@index([totalPoints(sort: Desc)])
+  @@index([weeklyPoints(sort: Desc)])
+  @@index([referralPoints(sort: Desc)])
+  @@index([globalRank])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model AuthNonce {
+  id        String   @id @default(cuid())
+  userId    String
+  nonce     String   @unique
+  used      Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([nonce])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_nonces")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  deviceId  String
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ─── Node (Contribution-Based Progression) ────────────────────────────────────
+
+model Node {
+  id               String     @id @default(cuid())
+  userId           String     @unique
+  nodeId           String     @unique  // Human-readable: AWZ-238491
+  status           NodeStatus @default(INACTIVE)
+
+  // ─── Progression ───────────────────────────────────────────────────────────
+  nodeScore        BigInt     @default(0)   // Total accumulated score (RPG XP)
+  nodeLevel        Int        @default(1)
+  nodeLevelTitle   String     @default("Explorer")
+  nodeMultiplier   Decimal    @default(1.0) @db.Decimal(4, 2)
+  nodeReputation   Int        @default(100) // 0-100 trust score
+
+  // ─── Score Breakdown (contribution sources) ────────────────────────────────
+  missionScore     BigInt     @default(0)
+  referralScore    BigInt     @default(0)
+  achievementScore BigInt     @default(0)
+  socialScore      BigInt     @default(0)
+  checkInScore     BigInt     @default(0)
+  eventScore       BigInt     @default(0)
+
+  // ─── Leaderboard ranks ──────────────────────────────────────────────────────
+  nodeScoreRank    Int?
+  reputationRank   Int?
+
+  // ─── Meta ───────────────────────────────────────────────────────────────────
+  activatedAt      DateTime?
+  lastScoreAt      DateTime?  // Last time score was added
+  signatureHash    String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scoreHistory     NodeScoreHistory[]
+  reputationHistory NodeReputationHistory[]
+
+  @@index([userId])
+  @@index([nodeId])
+  @@index([nodeScore(sort: Desc)])
+  @@index([nodeLevel])
+  @@index([nodeReputation])
+  @@index([status])
+  @@map("nodes")
+}
+
+model NodeScoreHistory {
+  id          String      @id @default(cuid())
+  userId      String
+  nodeDbId    String      // Reference to node.id (cuid)
+  amount      Int
+  source      ScoreSource
+  sourceId    String?
+  description String
+  newTotal    BigInt
+  multiplierAt Decimal    @db.Decimal(4, 2) // Multiplier at time of scoring
+  pointsAwarded Int       // Points awarded = amount * multiplierAt
+  createdAt   DateTime    @default(now())
+
+  node Node @relation(fields: [nodeDbId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([nodeDbId])
+  @@index([source])
+  @@index([createdAt])
+  @@map("node_score_history")
+}
+
+model NodeReputationHistory {
+  id          String                 @id @default(cuid())
+  userId      String
+  nodeDbId    String
+  change      Int                    // Positive or negative
+  reason      ReputationChangeReason
+  newScore    Int
+  metadata    Json?
+  createdAt   DateTime               @default(now())
+
+  node Node @relation(fields: [nodeDbId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([nodeDbId])
+  @@index([createdAt])
+  @@map("node_reputation_history")
+}
+
+// ─── Missions ─────────────────────────────────────────────────────────────────
+
+model Mission {
+  id            String        @id @default(cuid())
+  title         String
+  description   String
+  type          MissionType
+  status        MissionStatus @default(DRAFT)
+  points        Int           // Legacy points (will be multiplied by nodeMultiplier)
+  nodeScoreReward Int         @default(20) // Fixed nodeScore awarded regardless of multiplier
+  bonusPoints   Int           @default(0)
+  requiredCount Int           @default(1)
+  imageUrl      String?
+  metadata      Json?
+  startsAt      DateTime?
+  endsAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  completions MissionCompletion[]
+
+  @@index([type])
+  @@index([status])
+  @@index([startsAt])
+  @@index([endsAt])
+  @@map("missions")
+}
+
+model MissionCompletion {
+  id           String           @id @default(cuid())
+  userId       String
+  missionId    String
+  status       CompletionStatus @default(STARTED)
+  progress     Int              @default(0)
+  completedAt  DateTime?
+  claimedAt    DateTime?
+  pointsEarned Int              @default(0)
+  scoreEarned  Int              @default(0) // nodeScore earned
+  metadata     Json?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, missionId])
+  @@index([userId])
+  @@index([missionId])
+  @@index([status])
+  @@map("mission_completions")
+}
+
+model PointTransaction {
+  id          String     @id @default(cuid())
+  userId      String
+  amount      Int
+  type        RewardType @default(POINTS)
+  description String
+  source      String
+  sourceId    String?
+  metadata    Json?
+  createdAt   DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([source])
+  @@index([createdAt])
+  @@map("point_transactions")
+}
+
+// ─── Referrals ────────────────────────────────────────────────────────────────
+
+model Referral {
+  id           String    @id @default(cuid())
+  referrerId   String
+  refereeId    String    @unique
+  code         String
+  rewardIssued Boolean   @default(false)
+  rewardedAt   DateTime?
+  pointsEarned Int       @default(0)
+  scoreEarned  Int       @default(0)
+  flagged      Boolean   @default(false)
+  flagReason   String?
+  createdAt    DateTime  @default(now())
+
+  referrer User @relation("ReferralBy", fields: [referrerId], references: [id], onDelete: Cascade)
+  referee  User @relation("ReferralTo", fields: [refereeId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+  @@index([refereeId])
+  @@index([code])
+  @@index([createdAt])
+  @@map("referrals")
+}
+
+// ─── Socials ──────────────────────────────────────────────────────────────────
+
+model SocialConnection {
+  id               String         @id @default(cuid())
+  userId           String
+  platform         SocialPlatform
+  platformUserId   String?
+  username         String?
+  status           SocialStatus   @default(PENDING)
+  verificationCode String?
+  verifiedAt       DateTime?
+  disconnectedAt   DateTime?
+  metadata         Json?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@index([userId])
+  @@index([platform])
+  @@index([platformUserId])
+  @@map("social_connections")
+}
+
+// ─── Achievements ─────────────────────────────────────────────────────────────
+
+model Achievement {
+  id          String              @id @default(cuid())
+  key         String              @unique  // e.g., 'first_mission', 'referrals_10'
+  title       String
+  description String
+  category    AchievementCategory
+  tier        AchievementTier     @default(BRONZE)
+  iconUrl     String?
+  pointReward Int                 @default(0)
+  scoreReward Int                 @default(0) // nodeScore awarded on unlock
+  condition   Json                // { type, threshold, source }
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  userAchievements UserAchievement[]
+
+  @@index([key])
+  @@index([category])
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String    @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime  @default(now())
+  claimedAt     DateTime?
+  pointsEarned  Int       @default(0)
+  scoreEarned   Int       @default(0)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@map("user_achievements")
+}
+
+// ─── News ─────────────────────────────────────────────────────────────────────
+
+model News {
+  id          String       @id @default(cuid())
+  title       String
+  slug        String       @unique
+  excerpt     String
+  content     String
+  imageUrl    String?
+  category    NewsCategory @default(ANNOUNCEMENT)
+  status      NewsStatus   @default(DRAFT)
+  tags        String[]     @default([])
+  authorId    String?
+  publishedAt DateTime?
+  viewCount   BigInt       @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([publishedAt(sort: Desc)])
+  @@index([slug])
+  @@map("news")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  read      Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ─── Audit ────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  userId    String?
+  action    AuditAction
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── System ───────────────────────────────────────────────────────────────────
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("system_config")
+}
