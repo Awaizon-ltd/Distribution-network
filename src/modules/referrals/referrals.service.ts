@@ -44,7 +44,7 @@ class ReferralsService {
       prisma.referral.count({ where: { referrerId: userId, rewardIssued: true } }),
     ])
 
-    const baseUrl = process.env.FRONTEND_URL ?? 'https://testnet.app'
+    const baseUrl = process.env.FRONTEND_URL ?? 'https://testnet.awarizon.com'
     return {
       code: user.referralCode,
       url: `${baseUrl}?ref=${user.referralCode}`,
