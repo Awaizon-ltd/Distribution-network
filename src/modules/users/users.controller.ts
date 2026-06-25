@@ -34,7 +34,7 @@ class UsersController {
 
   async getByWallet(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const profile = await usersService.getProfileByWallet(req.params.wallet)
+      const profile = await usersService.getProfileByWallet(req.params.wallet as string)
       sendSuccess(res, profile)
     } catch (error) {
       next(error)

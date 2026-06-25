@@ -1,12 +1,21 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '../../database/client'
 import { redis, CACHE_KEYS } from '../../cache/redis'
 import { config } from '../../config'
 import { NotFoundError } from '../../utils/errors'
 
+type NewsListSelect = Prisma.NewsGetPayload<{
+  select: {
+    id: true; title: true; slug: true; excerpt: true; imageUrl: true
+    category: true; tags: true; publishedAt: true; viewCount: true
+  }
+}>
+type PublishedNewsResult = { news: NewsListSelect[]; total: number }
+
 class NewsService {
-  async getPublishedNews(page = 1, limit = 20, category?: string) {
+  async getPublishedNews(page = 1, limit = 20, category?: string): Promise<PublishedNewsResult> {
     const cacheKey = `${CACHE_KEYS.newsLatest}:${page}:${limit}:${category ?? 'all'}`
-    const cached = await redis.get(cacheKey)
+    const cached = await redis.get<PublishedNewsResult>(cacheKey)
     if (cached) return cached
 
     const where = {

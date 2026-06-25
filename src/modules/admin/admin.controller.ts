@@ -17,7 +17,7 @@ class AdminController {
 
   async suspendUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await adminService.suspendUser(req.params.id, req.user!.id)
+      await adminService.suspendUser(req.params.id as string, req.user!.id)
       sendSuccess(res, null, 'User suspended')
     } catch (error) {
       next(error)
@@ -26,7 +26,7 @@ class AdminController {
 
   async banUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await adminService.banUser(req.params.id, req.user!.id)
+      await adminService.banUser(req.params.id as string, req.user!.id)
       sendSuccess(res, null, 'User banned')
     } catch (error) {
       next(error)
@@ -35,7 +35,7 @@ class AdminController {
 
   async reinstateUser(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await adminService.reinstateUser(req.params.id, req.user!.id)
+      await adminService.reinstateUser(req.params.id as string, req.user!.id)
       sendSuccess(res, null, 'User reinstated')
     } catch (error) {
       next(error)
@@ -45,7 +45,7 @@ class AdminController {
   async adjustPoints(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { amount, reason } = req.body
-      await adminService.adjustPoints(req.params.id, amount, reason, req.user!.id)
+      await adminService.adjustPoints(req.params.id as string, amount, reason, req.user!.id)
       sendSuccess(res, null, 'Points adjusted')
     } catch (error) {
       next(error)
@@ -63,7 +63,7 @@ class AdminController {
 
   async updateMission(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const mission = await adminService.updateMission(req.params.id, req.body)
+      const mission = await adminService.updateMission(req.params.id as string, req.body)
       sendSuccess(res, mission, 'Mission updated')
     } catch (error) {
       next(error)
@@ -81,7 +81,7 @@ class AdminController {
 
   async publishNews(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const article = await adminService.publishNews(req.params.id)
+      const article = await adminService.publishNews(req.params.id as string)
       sendSuccess(res, article, 'News published')
     } catch (error) {
       next(error)
@@ -90,7 +90,7 @@ class AdminController {
 
   async updateNews(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const article = await adminService.updateNews(req.params.id, req.body)
+      const article = await adminService.updateNews(req.params.id as string, req.body)
       sendSuccess(res, article, 'News updated')
     } catch (error) {
       next(error)

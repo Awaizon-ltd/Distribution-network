@@ -1,5 +1,5 @@
 import { Worker, Job } from 'bullmq'
-import { redis } from '../../cache/redis'
+import { bullConnectionOptions } from '../../config/bull-connection'
 import { rankingsService } from '../../modules/rankings/rankings.service'
 import { logger } from '../../utils/logger'
 
@@ -10,7 +10,7 @@ export const rankingWorker = new Worker(
     await rankingsService.recalculateRanks()
     logger.info('Rank recalculation complete')
   },
-  { connection: redis.raw, concurrency: 1 },
+  { connection: bullConnectionOptions, concurrency: 1 },
 )
 
 rankingWorker.on('failed', (job, err) => {

@@ -14,7 +14,7 @@ class MissionsController {
 
   async start(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await missionsService.startMission(req.user!.id, req.params.id)
+      await missionsService.startMission(req.user!.id, req.params.id as string)
       sendSuccess(res, null, 'Mission started')
     } catch (error) {
       next(error)
@@ -23,7 +23,7 @@ class MissionsController {
 
   async complete(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await missionsService.completeMission(req.user!.id, req.params.id)
+      await missionsService.completeMission(req.user!.id, req.params.id as string)
       sendSuccess(res, null, 'Mission completed')
     } catch (error) {
       next(error)
@@ -32,7 +32,7 @@ class MissionsController {
 
   async claim(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await missionsService.claimMission(req.user!.id, req.params.id)
+      await missionsService.claimMission(req.user!.id, req.params.id as string)
       sendSuccess(res, null, 'Rewards claimed successfully')
     } catch (error) {
       next(error)

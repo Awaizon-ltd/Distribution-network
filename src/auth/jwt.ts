@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken'
+import jwt, { type SignOptions } from 'jsonwebtoken'
 import { createHash, randomBytes } from 'crypto'
 import { config } from '../config'
 import { UserRole } from '@prisma/client'
@@ -17,7 +17,7 @@ export interface RefreshTokenPayload {
 
 export const signAccessToken = (payload: AccessTokenPayload): string => {
   return jwt.sign(payload, config.jwt.accessSecret, {
-    expiresIn: config.jwt.accessExpiresIn,
+    expiresIn: config.jwt.accessExpiresIn as SignOptions['expiresIn'],
     issuer: 'testnet-api',
     audience: 'testnet-app',
   })
@@ -25,7 +25,7 @@ export const signAccessToken = (payload: AccessTokenPayload): string => {
 
 export const signRefreshToken = (payload: RefreshTokenPayload): string => {
   return jwt.sign(payload, config.jwt.refreshSecret, {
-    expiresIn: config.jwt.refreshExpiresIn,
+    expiresIn: config.jwt.refreshExpiresIn as SignOptions['expiresIn'],
     issuer: 'testnet-api',
     audience: 'testnet-app',
   })

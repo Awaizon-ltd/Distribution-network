@@ -1,5 +1,5 @@
 import { Worker } from 'bullmq'
-import { redis } from '../../cache/redis'
+import { bullConnectionOptions } from '../../config/bull-connection'
 import { achievementsService } from '../../modules/achievements/achievements.service'
 import { logger } from '../../utils/logger'
 
@@ -15,7 +15,7 @@ export const achievementWorker = new Worker(
     await achievementsService.checkAndAwardAchievements(userId, { source, newScore, level })
   },
   {
-    connection: redis.raw,
+    connection: bullConnectionOptions,
     concurrency: 10,
   },
 )

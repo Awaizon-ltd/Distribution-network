@@ -17,7 +17,7 @@ class NewsController {
 
   async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const article = await newsService.getNewsById(req.params.id)
+      const article = await newsService.getNewsById(req.params.id as string)
       sendSuccess(res, article)
     } catch (error) {
       next(error)
@@ -26,7 +26,7 @@ class NewsController {
 
   async getBySlug(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const article = await newsService.getNewsBySlug(req.params.slug)
+      const article = await newsService.getNewsBySlug(req.params.slug as string)
       sendSuccess(res, article)
     } catch (error) {
       next(error)

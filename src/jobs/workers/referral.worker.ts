@@ -1,5 +1,5 @@
 import { Worker, Job } from 'bullmq'
-import { redis } from '../../cache/redis'
+import { bullConnectionOptions } from '../../config/bull-connection'
 import { referralsService } from '../../modules/referrals/referrals.service'
 import { addNotificationJob } from '../../queue'
 import { logger } from '../../utils/logger'
@@ -35,7 +35,7 @@ export const referralWorker = new Worker(
       throw err
     }
   },
-  { connection: redis.raw, concurrency: 5 },
+  { connection: bullConnectionOptions, concurrency: 5 },
 )
 
 referralWorker.on('failed', (job, err) => {

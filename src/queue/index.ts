@@ -1,10 +1,8 @@
 import { Queue, QueueOptions } from 'bullmq'
-import { redis } from '../cache/redis'
-
-const connection = redis.raw
+import { bullConnectionOptions } from '../config/bull-connection'
 
 const queueOptions: QueueOptions = {
-  connection,
+  connection: bullConnectionOptions,
   defaultJobOptions: {
     removeOnComplete: { count: 100 },
     removeOnFail: { count: 500 },

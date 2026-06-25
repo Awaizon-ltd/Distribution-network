@@ -16,7 +16,7 @@ class NotificationsController {
 
   async markRead(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await notificationsService.markRead(req.user!.id, req.params.id)
+      await notificationsService.markRead(req.user!.id, req.params.id as string)
       sendSuccess(res, null, 'Marked as read')
     } catch (error) {
       next(error)

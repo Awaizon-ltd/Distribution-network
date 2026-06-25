@@ -1,5 +1,5 @@
 import { Worker, Job } from 'bullmq'
-import { redis } from '../../cache/redis'
+import { bullConnectionOptions } from '../../config/bull-connection'
 import { rankingsService } from '../../modules/rankings/rankings.service'
 import { logger } from '../../utils/logger'
 
@@ -10,7 +10,7 @@ export const weeklyResetWorker = new Worker(
     await rankingsService.resetWeeklyPoints()
     logger.info('Weekly points reset complete')
   },
-  { connection: redis.raw, concurrency: 1 },
+  { connection: bullConnectionOptions, concurrency: 1 },
 )
 
 weeklyResetWorker.on('failed', (job, err) => {
