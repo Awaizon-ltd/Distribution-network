@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { adminController } from './admin.controller'
+import { adminCreatorController } from './admin.creator.controller'
 import { authenticate, requireAdmin } from '../../middleware/auth.middleware'
 import { validateBody } from '../../middleware/validate.middleware'
 
@@ -10,6 +11,19 @@ router.use(authenticate, requireAdmin)
 const adjustPointsSchema = z.object({
   amount: z.number().int().refine((n) => n !== 0, 'Amount cannot be 0'),
   reason: z.string().min(5).max(200),
+})
+
+const rejectReasonSchema = z.object({
+  reason: z.string().min(5).max(300),
+})
+
+const rejectSubmissionSchema = z.object({
+  reason: z.string().min(5).max(300),
+  penaltyApplied: z.boolean().optional(),
+})
+
+const bulkApproveSchema = z.object({
+  ids: z.array(z.string()).min(1).max(50),
 })
 
 // Users
@@ -31,5 +45,16 @@ router.put('/news/:id', adminController.updateNews.bind(adminController))
 // Analytics
 router.get('/analytics', adminController.getAnalytics.bind(adminController))
 router.get('/audit-logs', adminController.getAuditLogs.bind(adminController))
+
+// Creator Program
+router.get('/creator/stats', adminCreatorController.getStats.bind(adminCreatorController))
+router.get('/creator/applications', adminCreatorController.listApplications.bind(adminCreatorController))
+router.post('/creator/applications/:id/approve', adminCreatorController.approveApplication.bind(adminCreatorController))
+router.post('/creator/applications/:id/reject', validateBody(rejectReasonSchema), adminCreatorController.rejectApplication.bind(adminCreatorController))
+router.get('/creator/submissions', adminCreatorController.listSubmissions.bind(adminCreatorController))
+router.get('/creator/submissions/:id', adminCreatorController.getSubmission.bind(adminCreatorController))
+router.post('/creator/submissions/:id/approve', adminCreatorController.approveSubmission.bind(adminCreatorController))
+router.post('/creator/submissions/:id/reject', validateBody(rejectSubmissionSchema), adminCreatorController.rejectSubmission.bind(adminCreatorController))
+router.post('/creator/submissions/bulk-approve', validateBody(bulkApproveSchema), adminCreatorController.bulkApprove.bind(adminCreatorController))
 
 export default router
