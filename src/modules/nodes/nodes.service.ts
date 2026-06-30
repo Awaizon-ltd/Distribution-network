@@ -19,6 +19,9 @@ import {
 } from './node.levels'
 import type { ScoreSource, ReputationChangeReason } from '@prisma/client'
 
+const CHECK_IN_STREAK_STEP = 5
+const CHECK_IN_STREAK_CAP = 50
+
 // ─── Core Score Engine ────────────────────────────────────────────────────────
 
 class NodesService {
@@ -176,7 +179,7 @@ class NodesService {
 
   // ─── Check-in ─────────────────────────────────────────────────────────────
 
-  async dailyCheckIn(userId: string): Promise<{ scoreEarned: number; pointsAwarded: number; leveledUp: boolean; newLevel?: { title: string; level: number } }> {
+  async dailyCheckIn(userId: string): Promise<{ scoreEarned: number; pointsAwarded: number; leveledUp: boolean; newLevel?: { title: string; level: number }; streak: number }> {
     const node = await this.requireActiveNode(userId)
 
     // Enforce once-per-day
@@ -187,13 +190,26 @@ class NodesService {
     })
     if (lastCheckIn) throw new ConflictError('Already checked in today')
 
-    const result = await this.addScore(userId, SCORE_VALUES.CHECK_IN, 'CHECK_IN', 'Daily check-in')
+    // Streak continues only if the previous check-in was yesterday — otherwise it resets to day 1
+    const yesterday = new Date(startOfDay)
+    yesterday.setDate(yesterday.getDate() - 1)
+    const checkedInYesterday = !!node.lastCheckInAt && node.lastCheckInAt >= yesterday && node.lastCheckInAt < startOfDay
+    const newStreak = checkedInYesterday ? node.checkInStreak + 1 : 1
+    const checkInScore = Math.min(newStreak * CHECK_IN_STREAK_STEP, CHECK_IN_STREAK_CAP)
+
+    await prisma.node.update({
+      where: { id: node.id },
+      data: { checkInStreak: newStreak, lastCheckInAt: now },
+    })
+
+    const result = await this.addScore(userId, checkInScore, 'CHECK_IN', `Daily check-in (streak day ${newStreak})`)
 
     return {
-      scoreEarned: SCORE_VALUES.CHECK_IN,
+      scoreEarned: checkInScore,
       pointsAwarded: result.pointsAwarded,
       leveledUp: result.leveledUp,
-      newLevel: result.newLevel ? getLevelForScore(Number(node.nodeScore) + SCORE_VALUES.CHECK_IN) : undefined,
+      newLevel: result.newLevel ? getLevelForScore(Number(node.nodeScore) + checkInScore) : undefined,
+      streak: newStreak,
     }
   }
 

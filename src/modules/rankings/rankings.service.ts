@@ -11,9 +11,9 @@ export interface LeaderboardEntry {
 }
 
 class RankingsService {
-  async getGlobalLeaderboard(page = 1, limit = 100): Promise<{ entries: LeaderboardEntry[]; total: number }> {
+  async getGlobalLeaderboard(page = 1, limit = 50): Promise<{ entries: LeaderboardEntry[]; total: number }> {
     const cached = await redis.get<{ entries: LeaderboardEntry[]; total: number }>(CACHE_KEYS.leaderboardGlobal)
-    if (cached && page === 1 && limit === 100) return cached
+    if (cached && page === 1 && limit === 50) return cached
 
     const skip = (page - 1) * limit
     const [users, total] = await Promise.all([
@@ -41,15 +41,15 @@ class RankingsService {
       nodeActive: u.node?.status === 'ACTIVE',
     }))
 
-    if (page === 1 && limit === 100) {
+    if (page === 1 && limit === 50) {
       await redis.set(CACHE_KEYS.leaderboardGlobal, { entries, total }, config.cache.leaderboardTTL)
     }
     return { entries, total }
   }
 
-  async getWeeklyLeaderboard(page = 1, limit = 100): Promise<{ entries: LeaderboardEntry[]; total: number }> {
+  async getWeeklyLeaderboard(page = 1, limit = 50): Promise<{ entries: LeaderboardEntry[]; total: number }> {
     const cached = await redis.get<{ entries: LeaderboardEntry[]; total: number }>(CACHE_KEYS.leaderboardWeekly)
-    if (cached && page === 1 && limit === 100) return cached
+    if (cached && page === 1 && limit === 50) return cached
 
     const skip = (page - 1) * limit
     const [users, total] = await Promise.all([
@@ -77,15 +77,15 @@ class RankingsService {
       nodeActive: u.node?.status === 'ACTIVE',
     }))
 
-    if (page === 1 && limit === 100) {
+    if (page === 1 && limit === 50) {
       await redis.set(CACHE_KEYS.leaderboardWeekly, { entries, total }, config.cache.leaderboardTTL)
     }
     return { entries, total }
   }
 
-  async getReferralLeaderboard(page = 1, limit = 100): Promise<{ entries: LeaderboardEntry[]; total: number }> {
+  async getReferralLeaderboard(page = 1, limit = 50): Promise<{ entries: LeaderboardEntry[]; total: number }> {
     const cached = await redis.get<{ entries: LeaderboardEntry[]; total: number }>(CACHE_KEYS.leaderboardReferral)
-    if (cached && page === 1 && limit === 100) return cached
+    if (cached && page === 1 && limit === 50) return cached
 
     const skip = (page - 1) * limit
     const [users, total] = await Promise.all([
@@ -113,13 +113,13 @@ class RankingsService {
       nodeActive: u.node?.status === 'ACTIVE',
     }))
 
-    if (page === 1 && limit === 100) {
+    if (page === 1 && limit === 50) {
       await redis.set(CACHE_KEYS.leaderboardReferral, { entries, total }, config.cache.leaderboardTTL)
     }
     return { entries, total }
   }
 
-  async getNodeScoreLeaderboard(page = 1, limit = 100): Promise<{ entries: Array<{ rank: number; userId: string; walletAddress: string; nodeScore: string; nodeLevel: number; nodeLevelTitle: string; nodeId: string | null }>; total: number }> {
+  async getNodeScoreLeaderboard(page = 1, limit = 50): Promise<{ entries: Array<{ rank: number; userId: string; walletAddress: string; nodeScore: string; nodeLevel: number; nodeLevelTitle: string; nodeId: string | null }>; total: number }> {
     const cacheKey = 'leaderboard:nodescore'
     const cached = await redis.get<{ entries: unknown[]; total: number }>(cacheKey)
     if (cached && page === 1 && limit === 100) return cached as never
@@ -153,7 +153,7 @@ class RankingsService {
       nodeId: n.nodeId,
     }))
 
-    if (page === 1 && limit === 100) {
+    if (page === 1 && limit === 50) {
       await redis.set(cacheKey, { entries, total }, config.cache.leaderboardTTL)
     }
     return { entries, total }

@@ -21,7 +21,7 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.string().default('900000'),
   RATE_LIMIT_MAX: z.string().default('100'),
 
-  REFERRAL_REWARD_POINTS: z.string().default('500'),
+  REFERRAL_REWARD_POINTS: z.string().default('100'),
   NODE_ACTIVATION_POINTS: z.string().default('1000'),
 
   LEADERBOARD_CACHE_TTL: z.string().default('300'),

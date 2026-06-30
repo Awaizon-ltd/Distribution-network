@@ -4,6 +4,7 @@ import { referralsService } from '../../modules/referrals/referrals.service'
 import { addNotificationJob } from '../../queue'
 import { logger } from '../../utils/logger'
 import { prisma } from '../../database/client'
+import { config } from '../../config'
 
 export const referralWorker = new Worker(
   'referral-processing',
@@ -24,7 +25,7 @@ export const referralWorker = new Worker(
           userId: referral.referrerId,
           type: 'REFERRAL_REWARD',
           title: 'Referral Reward Earned!',
-          message: `Your referral ${referral.referee.walletAddress.slice(0, 10)}... activated their node. You earned 500 points!`,
+          message: `Your referral ${referral.referee.walletAddress.slice(0, 10)}... activated their node. You earned ${config.rewards.referralPoints} points!`,
           data: { referralId },
         })
       }

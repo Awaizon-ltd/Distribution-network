@@ -18,7 +18,7 @@ export const SCORE_VALUES = {
   MISSION_REFERRAL: 150,
   MISSION_SOCIAL: 50,
   REFERRAL_ACTIVATION: 500,
-  SOCIAL_CONNECT: 50,
+  SOCIAL_CONNECT: 200,
   CHECK_IN: 20,
   NODE_ACTIVATION: 500,
   // Achievements are defined individually in achievements.definitions.ts

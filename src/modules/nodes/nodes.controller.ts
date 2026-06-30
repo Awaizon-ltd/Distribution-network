@@ -36,7 +36,7 @@ class NodesController {
       const result = await nodesService.dailyCheckIn(req.user!.id)
       const msg = result.leveledUp
         ? `Level up! You are now ${result.newLevel?.title}!`
-        : `Daily check-in complete. +${result.pointsAwarded} points`
+        : `Day ${result.streak} streak! +${result.pointsAwarded} points`
       sendSuccess(res, result, msg)
     } catch (error) {
       next(error)

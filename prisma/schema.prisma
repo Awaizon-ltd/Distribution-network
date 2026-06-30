@@ -263,6 +263,10 @@ model Node {
   checkInScore     BigInt     @default(0)
   eventScore       BigInt     @default(0)
 
+  // ─── Check-in streak ────────────────────────────────────────────────────────
+  checkInStreak    Int        @default(0)   // Consecutive daily check-ins
+  lastCheckInAt    DateTime?                // Date of last check-in
+
   // ─── Leaderboard ranks ──────────────────────────────────────────────────────
   nodeScoreRank    Int?
   reputationRank   Int?

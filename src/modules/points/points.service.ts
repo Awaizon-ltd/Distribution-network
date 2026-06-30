@@ -1,5 +1,5 @@
 import { prisma } from '../../database/client'
-import { redis } from '../../cache/redis'
+import { redis, CACHE_KEYS } from '../../cache/redis'
 import { logger } from '../../utils/logger'
 
 class PointsService {
@@ -31,8 +31,11 @@ class PointsService {
       }
     })
 
-    // Invalidate leaderboard caches
-    await redis.invalidatePattern('leaderboard:*')
+    // Invalidate leaderboard caches and user profile cache
+    await Promise.all([
+      redis.invalidatePattern('leaderboard:*'),
+      redis.del(CACHE_KEYS.userById(userId)),
+    ])
 
     logger.debug(`Added ${amount} points to user ${userId} from ${source}`)
   }
@@ -58,7 +61,10 @@ class PointsService {
       })
     })
 
-    await redis.invalidatePattern('leaderboard:*')
+    await Promise.all([
+      redis.invalidatePattern('leaderboard:*'),
+      redis.del(CACHE_KEYS.userById(userId)),
+    ])
   }
 }
 
