@@ -19,6 +19,7 @@ import {
 } from './node.levels'
 import type { ScoreSource, ReputationChangeReason } from '@prisma/client'
 
+const CHECK_IN_STREAK_BASE = 20
 const CHECK_IN_STREAK_STEP = 5
 const CHECK_IN_STREAK_CAP = 50
 
@@ -195,7 +196,7 @@ class NodesService {
     yesterday.setDate(yesterday.getDate() - 1)
     const checkedInYesterday = !!node.lastCheckInAt && node.lastCheckInAt >= yesterday && node.lastCheckInAt < startOfDay
     const newStreak = checkedInYesterday ? node.checkInStreak + 1 : 1
-    const checkInScore = Math.min(newStreak * CHECK_IN_STREAK_STEP, CHECK_IN_STREAK_CAP)
+    const checkInScore = Math.min(CHECK_IN_STREAK_BASE + (newStreak - 1) * CHECK_IN_STREAK_STEP, CHECK_IN_STREAK_CAP)
 
     await prisma.node.update({
       where: { id: node.id },
