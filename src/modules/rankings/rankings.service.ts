@@ -120,9 +120,9 @@ class RankingsService {
   }
 
   async getNodeScoreLeaderboard(page = 1, limit = 50): Promise<{ entries: Array<{ rank: number; userId: string; walletAddress: string; nodeScore: string; nodeLevel: number; nodeLevelTitle: string; nodeId: string | null }>; total: number }> {
-    const cacheKey = 'leaderboard:nodescore'
+    const cacheKey = CACHE_KEYS.leaderboardNode
     const cached = await redis.get<{ entries: unknown[]; total: number }>(cacheKey)
-    if (cached && page === 1 && limit === 100) return cached as never
+    if (cached && page === 1 && limit === 50) return cached as never
 
     const skip = (page - 1) * limit
     const [nodes, total] = await Promise.all([
@@ -188,11 +188,12 @@ class RankingsService {
       ),
     )
 
-    // Clear leaderboard caches
+    // Clear all leaderboard caches
     await Promise.all([
       redis.del(CACHE_KEYS.leaderboardGlobal),
       redis.del(CACHE_KEYS.leaderboardWeekly),
       redis.del(CACHE_KEYS.leaderboardReferral),
+      redis.del(CACHE_KEYS.leaderboardNode),
     ])
   }
 

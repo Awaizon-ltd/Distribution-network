@@ -48,8 +48,9 @@ export const authenticate = async (
       throw new UnauthorizedError('Invalid or expired access token')
     }
 
-    // Check cached user first
-    let user = await redis.get<AuthenticatedUser>(CACHE_KEYS.userById(payload.sub))
+    // Check cached auth user — uses a separate key from the full profile cache
+    // to prevent the minimal {id,walletAddress,role} object from poisoning getProfile()
+    let user = await redis.get<AuthenticatedUser>(CACHE_KEYS.authUser(payload.sub))
     if (!user) {
       const dbUser = await prisma.user.findUnique({
         where: { id: payload.sub },
@@ -61,7 +62,7 @@ export const authenticate = async (
       if (dbUser.status === 'BANNED') throw new ForbiddenError('Account banned')
 
       user = { id: dbUser.id, walletAddress: dbUser.walletAddress, role: dbUser.role }
-      await redis.set(CACHE_KEYS.userById(payload.sub), user, config.cache.userTTL)
+      await redis.set(CACHE_KEYS.authUser(payload.sub), user, config.cache.userTTL)
     }
 
     req.user = user

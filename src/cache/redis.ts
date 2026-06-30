@@ -126,12 +126,14 @@ export const redis = RedisClient.getInstance()
 export const CACHE_KEYS = {
   user: (wallet: string) => `user:${wallet.toLowerCase()}`,
   userById: (id: string) => `user:id:${id}`,
+  // Separate key for auth middleware so it never collides with the full profile cache
+  authUser: (id: string) => `auth:user:${id}`,
   missionsActive: 'missions:active',
   missionsDailyByUser: (userId: string) => `missions:daily:${userId}`,
   leaderboardGlobal: 'leaderboard:global',
   leaderboardWeekly: 'leaderboard:weekly',
   leaderboardReferral: 'leaderboard:referral',
-  leaderboardNode: 'leaderboard:node',
+  leaderboardNode: 'leaderboard:nodescore',
   newsLatest: 'news:latest',
   newsById: (id: string) => `news:${id}`,
   nodeByUser: (userId: string) => `node:${userId}`,

@@ -138,8 +138,8 @@ class AuthService {
     // Issue tokens
     const tokens = await this.issueTokens(user.id, user.walletAddress, user.role, ipAddress, userAgent)
 
-    // Cache user
-    await redis.del(CACHE_KEYS.userById(user.id))
+    // Bust auth cache so next request re-fetches fresh role/status from DB
+    await redis.del(CACHE_KEYS.authUser(user.id))
 
     return {
       user: {
@@ -194,7 +194,7 @@ class AuthService {
       where: { userId, revokedAt: null },
       data: { revokedAt: new Date() },
     })
-    await redis.del(CACHE_KEYS.userById(userId))
+    await redis.del(CACHE_KEYS.authUser(userId))
   }
 
   private async issueTokens(

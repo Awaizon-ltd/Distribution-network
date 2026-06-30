@@ -47,9 +47,12 @@ class PointsService {
     description: string,
   ): Promise<void> {
     await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({ where: { id: userId }, select: { totalPoints: true } })
-      const currentPoints = Number(user?.totalPoints ?? 0)
-      const deductAmount = Math.min(amount, currentPoints)
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { totalPoints: true, weeklyPoints: true },
+      })
+      const deductAmount = Math.min(amount, Number(user?.totalPoints ?? 0))
+      const weeklyDeduct = Math.min(deductAmount, Number(user?.weeklyPoints ?? 0))
 
       await tx.pointTransaction.create({
         data: { userId, amount: -deductAmount, source, description },
@@ -57,7 +60,10 @@ class PointsService {
 
       await tx.user.update({
         where: { id: userId },
-        data: { totalPoints: { decrement: deductAmount } },
+        data: {
+          totalPoints: { decrement: deductAmount },
+          weeklyPoints: { decrement: weeklyDeduct },
+        },
       })
     })
 

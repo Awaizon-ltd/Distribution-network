@@ -1,4 +1,5 @@
 import { prisma } from '../../database/client'
+import { redis, CACHE_KEYS } from '../../cache/redis'
 import { addNotificationJob } from '../../queue'
 import { pointsService } from '../points/points.service'
 import { logger } from '../../utils/logger'
@@ -145,6 +146,8 @@ class AchievementsService {
             },
           }),
         ])
+        // Bust node cache so dashboard reflects updated score immediately
+        await redis.del(CACHE_KEYS.nodeByUser(userId))
       }
     }
 

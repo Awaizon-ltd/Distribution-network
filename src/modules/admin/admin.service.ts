@@ -1,5 +1,5 @@
 import { prisma } from '../../database/client'
-import { redis } from '../../cache/redis'
+import { redis, CACHE_KEYS } from '../../cache/redis'
 import { pointsService } from '../points/points.service'
 import { missionsService } from '../missions/missions.service'
 import { newsService } from '../news/news.service'
@@ -42,7 +42,7 @@ class AdminService {
       }),
     ])
 
-    await redis.invalidatePattern(`user:*`)
+    await Promise.all([redis.invalidatePattern(`user:*`), redis.del(CACHE_KEYS.authUser(userId))])
   }
 
   async banUser(userId: string, adminId: string): Promise<void> {
@@ -57,7 +57,7 @@ class AdminService {
       }),
     ])
 
-    await redis.invalidatePattern(`user:*`)
+    await Promise.all([redis.invalidatePattern(`user:*`), redis.del(CACHE_KEYS.authUser(userId))])
   }
 
   async reinstateUser(userId: string, adminId: string): Promise<void> {
@@ -67,7 +67,7 @@ class AdminService {
         data: { userId: adminId, action: 'USER_UPDATED', entity: 'User', entityId: userId },
       }),
     ])
-    await redis.invalidatePattern(`user:*`)
+    await Promise.all([redis.invalidatePattern(`user:*`), redis.del(CACHE_KEYS.authUser(userId))])
   }
 
   async adjustPoints(userId: string, amount: number, reason: string, adminId: string): Promise<void> {
