@@ -12,7 +12,7 @@ const CREATOR_REWARDS: Record<ContentCategory, { points: number; score: number; 
   EDUCATIONAL: { points: 200, score: 100, reputation: 8, source: 'CREATOR_EDUCATIONAL' },
 }
 
-const MAX_SUBMISSIONS_PER_DAY = 5
+const MAX_SUBMISSIONS_PER_DAY = 2
 const DUPLICATE_PENALTY = -5
 
 function extractTweetId(url: string): string | null {
@@ -109,7 +109,7 @@ class CreatorService {
       where: { userId, submittedAt: { gte: startOfDay } },
     })
     if (todayCount >= MAX_SUBMISSIONS_PER_DAY) {
-      throw new BadRequestError(`Daily submission limit reached (${MAX_SUBMISSIONS_PER_DAY}/day)`)
+      throw new BadRequestError(`Daily submission limit reached (${MAX_SUBMISSIONS_PER_DAY} submissions per day)`)
     }
 
     // Duplicate check — penalty if it's the same user, silent reject if another user already submitted it
