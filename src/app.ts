@@ -25,6 +25,7 @@ import newsRoutes from './modules/news/news.routes'
 import notificationsRoutes from './modules/notifications/notifications.routes'
 import adminRoutes from './modules/admin/admin.routes'
 import achievementsRoutes from './modules/achievements/achievements.routes'
+import creatorRoutes from './modules/creator/creator.routes'
 
 const app = express()
 
@@ -101,6 +102,7 @@ app.use(`${apiPrefix}/news`, newsRoutes)
 app.use(`${apiPrefix}/notifications`, notificationsRoutes)
 app.use(`${apiPrefix}/admin`, adminRoutes)
 app.use(`${apiPrefix}/achievements`, achievementsRoutes)
+app.use(`${apiPrefix}/creator`, creatorRoutes)
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound)

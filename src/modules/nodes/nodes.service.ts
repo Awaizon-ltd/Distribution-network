@@ -301,6 +301,7 @@ class NodesService {
       socialScore: Number(node.socialScore),
       checkInScore: Number(node.checkInScore),
       eventScore: Number(node.eventScore),
+      creatorScore: Number(node.creatorScore),
       scoreHistory: node.scoreHistory.map((h) => ({
         ...h,
         newTotal: Number(h.newTotal),
@@ -428,6 +429,63 @@ class NodesService {
     await addAchievementCheckJob({ userId, source: 'NODE_ACTIVATION', newScore: 0, level: newLevel })
   }
 
+  // Creator score: fixed rewards that bypass the node multiplier.
+  // pointsAmount is the flat points to award (not scoreAmount × multiplier).
+  async addCreatorScore(
+    userId: string,
+    scoreAmount: number,
+    pointsAmount: number,
+    source: ScoreSource,
+    description: string,
+    sourceId?: string,
+  ): Promise<{ pointsAwarded: number; leveledUp: boolean; newLevel?: number }> {
+    const node = await prisma.node.findUnique({ where: { userId } })
+    if (!node) return { pointsAwarded: 0, leveledUp: false }
+
+    const newTotalScore = Number(node.nodeScore) + scoreAmount
+    const newLevelData = getLevelForScore(newTotalScore)
+    const didLevelUp = newLevelData.level > node.nodeLevel
+
+    await prisma.$transaction(async (tx) => {
+      await tx.node.update({
+        where: { id: node.id },
+        data: {
+          nodeScore: { increment: scoreAmount },
+          creatorScore: { increment: scoreAmount },
+          nodeLevel: newLevelData.level,
+          nodeLevelTitle: newLevelData.title,
+          nodeMultiplier: new Decimal(newLevelData.multiplier),
+          lastScoreAt: new Date(),
+        },
+      })
+
+      await tx.nodeScoreHistory.create({
+        data: {
+          userId,
+          nodeDbId: node.id,
+          amount: scoreAmount,
+          source,
+          sourceId,
+          description,
+          newTotal: BigInt(newTotalScore),
+          multiplierAt: new Decimal(1.0),
+          pointsAwarded: pointsAmount,
+        },
+      })
+    })
+
+    await pointsService.addPoints(userId, pointsAmount, source, description, sourceId)
+
+    if (didLevelUp) {
+      await this.handleLevelUp(userId, node.id, newLevelData.level, newLevelData.title)
+    }
+
+    await addAchievementCheckJob({ userId, source, newScore: newTotalScore })
+    await Promise.all([redis.del(CACHE_KEYS.nodeByUser(userId)), redis.del(CACHE_KEYS.userById(userId))])
+
+    return { pointsAwarded: pointsAmount, leveledUp: didLevelUp, newLevel: didLevelUp ? newLevelData.level : undefined }
+  }
+
   private sourceToSubScore(source: ScoreSource): string {
     const map: Partial<Record<ScoreSource, string>> = {
       MISSION_DAILY: 'missionScore',
@@ -440,10 +498,14 @@ class NodesService {
       REFERRAL_MILESTONE: 'referralScore',
       SOCIAL_CONNECT: 'socialScore',
       CHECK_IN: 'checkInScore',
-      NODE_ACTIVATION: 'missionScore', // activation counts as a mission-type score
+      NODE_ACTIVATION: 'missionScore',
       ACHIEVEMENT: 'achievementScore',
       EVENT: 'eventScore',
       ADMIN: 'eventScore',
+      CREATOR_TWEET: 'creatorScore',
+      CREATOR_THREAD: 'creatorScore',
+      CREATOR_VIDEO: 'creatorScore',
+      CREATOR_EDUCATIONAL: 'creatorScore',
     }
     return map[source] ?? 'eventScore'
   }
