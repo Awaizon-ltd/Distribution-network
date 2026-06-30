@@ -86,6 +86,9 @@ enum NotificationType {
   LEVEL_UP
   MILESTONE
   SYSTEM
+  CREATOR_APPROVED
+  CREATOR_SUBMISSION_APPROVED
+  CREATOR_SUBMISSION_REJECTED
 }
 
 enum RewardType {
@@ -112,6 +115,25 @@ enum AchievementTier {
   LEGENDARY
 }
 
+enum CreatorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ContentCategory {
+  TWEET
+  THREAD
+  VIDEO
+  EDUCATIONAL
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum ScoreSource {
   MISSION_DAILY
   MISSION_WEEKLY
@@ -127,6 +149,10 @@ enum ScoreSource {
   NODE_ACTIVATION
   ADMIN
   EVENT
+  CREATOR_TWEET
+  CREATOR_THREAD
+  CREATOR_VIDEO
+  CREATOR_EDUCATIONAL
 }
 
 enum ReputationChangeReason {
@@ -138,6 +164,10 @@ enum ReputationChangeReason {
   ABUSE_DETECTED
   ADMIN_ADJUSTMENT
   ACCOUNT_ACTIVITY
+  CREATOR_REWARD
+  SPAM_SUBMISSION
+  DUPLICATE_SUBMISSION
+  FRAUD_ATTEMPT
 }
 
 enum AuditAction {
@@ -161,6 +191,13 @@ enum AuditAction {
   ACHIEVEMENT_UNLOCKED
   REPUTATION_CHANGED
   ADMIN_ACTION
+  CREATOR_APPLIED
+  CREATOR_APPROVED
+  CREATOR_REJECTED
+  CREATOR_SUBMISSION_SUBMITTED
+  CREATOR_SUBMISSION_APPROVED
+  CREATOR_SUBMISSION_REJECTED
+  CREATOR_BULK_APPROVED
 }
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -182,17 +219,19 @@ model User {
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
-  authNonces        AuthNonce[]
-  refreshTokens     RefreshToken[]
-  node              Node?
-  socialConnections SocialConnection[]
-  missions          MissionCompletion[]
-  pointTransactions PointTransaction[]
-  referralsMade     Referral[]         @relation("ReferralBy")
-  referralUsed      Referral?          @relation("ReferralTo")
-  notifications     Notification[]
-  achievements      UserAchievement[]
-  auditLogs         AuditLog[]
+  authNonces         AuthNonce[]
+  refreshTokens      RefreshToken[]
+  node               Node?
+  socialConnections  SocialConnection[]
+  missions           MissionCompletion[]
+  pointTransactions  PointTransaction[]
+  referralsMade      Referral[]          @relation("ReferralBy")
+  referralUsed       Referral?           @relation("ReferralTo")
+  notifications      Notification[]
+  achievements       UserAchievement[]
+  auditLogs          AuditLog[]
+  creatorProfile     CreatorProfile?
+  creatorSubmissions CreatorSubmission[]
 
   @@index([walletAddress])
   @@index([totalPoints(sort: Desc)])
@@ -262,6 +301,7 @@ model Node {
   socialScore      BigInt     @default(0)
   checkInScore     BigInt     @default(0)
   eventScore       BigInt     @default(0)
+  creatorScore     BigInt     @default(0)
 
   // ─── Check-in streak ────────────────────────────────────────────────────────
   checkInStreak    Int        @default(0)   // Consecutive daily check-ins
@@ -561,6 +601,60 @@ model AuditLog {
   @@index([entity])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ─── Creator Program ──────────────────────────────────────────────────────────
+
+model CreatorProfile {
+  id              String        @id @default(cuid())
+  userId          String        @unique
+  twitterUsername String
+  status          CreatorStatus @default(PENDING)
+  appliedAt       DateTime      @default(now())
+  approvedAt      DateTime?
+  approvedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  submissions     CreatorSubmission[]
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status])
+  @@index([twitterUsername])
+  @@map("creator_profiles")
+}
+
+model CreatorSubmission {
+  id                String           @id @default(cuid())
+  creatorId         String
+  userId            String
+  tweetUrl          String
+  tweetId           String
+  category          ContentCategory
+  description       String?
+  status            SubmissionStatus @default(PENDING)
+  rewardIssued      Boolean          @default(false)
+  pointsAwarded     Int              @default(0)
+  scoreAwarded      Int              @default(0)
+  reputationAwarded Int              @default(0)
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  rejectionReason   String?
+  penaltyApplied    Boolean          @default(false)
+  penaltyReason     String?
+  creator           CreatorProfile   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submittedAt       DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([tweetId])
+  @@index([userId])
+  @@index([status])
+  @@index([category])
+  @@index([submittedAt])
+  @@index([rewardIssued])
+  @@map("creator_submissions")
 }
 
 // ─── System ───────────────────────────────────────────────────────────────────
