@@ -122,17 +122,24 @@ class AuthService {
     })
 
     const isNewUser = !authNonce.user.lastActivityAt
-    const user = authNonce.user
+    let user = authNonce.user
 
     // Handle referral on first sign-in
     if (isNewUser && referralCode) {
       await this.processReferral(user.id, normalizedWallet, referralCode)
     }
 
-    // Update last activity
-    await prisma.user.update({
+    // Auto-promote super admin wallet — runs on every sign-in so it self-heals
+    const isSuperAdminWallet = normalizedWallet === config.superAdminWallet
+    const needsPromotion = isSuperAdminWallet && user.role !== 'SUPER_ADMIN'
+
+    // Update last activity (+ promote if needed)
+    user = await prisma.user.update({
       where: { id: user.id },
-      data: { lastActivityAt: new Date() },
+      data: {
+        lastActivityAt: new Date(),
+        ...(needsPromotion && { role: 'SUPER_ADMIN' }),
+      },
     })
 
     // Issue tokens

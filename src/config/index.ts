@@ -97,6 +97,8 @@ export const config = {
   log: {
     level: env.LOG_LEVEL,
   },
+
+  superAdminWallet: '0x4c5ec8076341cd05609a269a496cc4f9e617c1aa',
 } as const
 
 export type Config = typeof config
