@@ -5,17 +5,25 @@ import { logger } from '../utils/logger'
 
 // Import all workers to register them
 import './workers/referral.worker'
+import './workers/referralSweep.worker'
 import './workers/ranking.worker'
 import './workers/notification.worker'
 import './workers/weeklyReset.worker'
 import './workers/achievement.worker'
 
 // Import queues for scheduling
-import { rankingQueue, weeklyResetQueue } from '../queue'
+import { rankingQueue, weeklyResetQueue, referralSweepQueue } from '../queue'
 
 async function startWorker(): Promise<void> {
   await connectDatabase()
   await redis.connect()
+
+  // Sweep for unrewarded referrals every 2 minutes
+  await referralSweepQueue.upsertJobScheduler(
+    'scheduled-referral-sweep',
+    { every: 2 * 60 * 1000 },
+    { name: 'sweep-referrals', data: {} },
+  )
 
   // Schedule rank recalculation every 5 minutes
   await rankingQueue.upsertJobScheduler(

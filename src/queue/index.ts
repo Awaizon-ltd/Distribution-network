@@ -12,6 +12,7 @@ const queueOptions: QueueOptions = {
 }
 
 export const referralQueue = new Queue('referral-processing', queueOptions)
+export const referralSweepQueue = new Queue('referral-sweep', queueOptions)
 export const rankingQueue = new Queue('ranking-recalculation', queueOptions)
 export const notificationQueue = new Queue('notification-delivery', queueOptions)
 export const rewardQueue = new Queue('reward-distribution', queueOptions)
@@ -20,6 +21,7 @@ export const achievementQueue = new Queue('achievement-check', queueOptions)
 
 export const queues = {
   referral: referralQueue,
+  referralSweep: referralSweepQueue,
   ranking: rankingQueue,
   notification: notificationQueue,
   reward: rewardQueue,
