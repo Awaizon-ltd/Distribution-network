@@ -47,6 +47,16 @@ class RankingsController {
     }
   }
 
+  async getCreator(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 50)
+      const result = await rankingsService.getCreatorLeaderboard(limit)
+      sendSuccess(res, result)
+    } catch (error) {
+      next(error)
+    }
+  }
+
   async getMyRank(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const rank = await rankingsService.getUserRank(req.user!.id)

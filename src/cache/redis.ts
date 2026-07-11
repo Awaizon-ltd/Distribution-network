@@ -114,6 +114,11 @@ class RedisClient {
     return this.client.zscore(key, member)
   }
 
+  async lock(key: string, ttlSeconds: number): Promise<boolean> {
+    const result = await this.client.set(key, '1', 'EX', ttlSeconds, 'NX')
+    return result === 'OK'
+  }
+
   async disconnect(): Promise<void> {
     await this.client.quit()
     logger.info('Redis disconnected')
@@ -134,6 +139,7 @@ export const CACHE_KEYS = {
   leaderboardWeekly: 'leaderboard:weekly',
   leaderboardReferral: 'leaderboard:referral',
   leaderboardNode: 'leaderboard:nodescore',
+  leaderboardCreator: 'leaderboard:creator',
   newsLatest: 'news:latest',
   newsById: (id: string) => `news:${id}`,
   nodeByUser: (userId: string) => `node:${userId}`,

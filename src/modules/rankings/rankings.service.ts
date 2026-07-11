@@ -10,6 +10,16 @@ export interface LeaderboardEntry {
   nodeActive: boolean
 }
 
+export interface CreatorLeaderboardEntry {
+  rank: number
+  userId: string
+  walletAddress: string
+  twitterUsername: string | null
+  creatorScore: string
+  sharePct: number
+  submissionCount: number
+}
+
 class RankingsService {
   async getGlobalLeaderboard(page = 1, limit = 50): Promise<{ entries: LeaderboardEntry[]; total: number }> {
     const cached = await redis.get<{ entries: LeaderboardEntry[]; total: number }>(CACHE_KEYS.leaderboardGlobal)
@@ -154,6 +164,68 @@ class RankingsService {
     }))
 
     if (page === 1 && limit === 50) {
+      await redis.set(cacheKey, { entries, total }, config.cache.leaderboardTTL)
+    }
+    return { entries, total }
+  }
+
+  async getCreatorLeaderboard(limit = 50): Promise<{ entries: CreatorLeaderboardEntry[]; total: number }> {
+    const cacheKey = CACHE_KEYS.leaderboardCreator
+    const cached = await redis.get<{ entries: CreatorLeaderboardEntry[]; total: number }>(cacheKey)
+    if (cached) return cached
+
+    const [nodes, total] = await Promise.all([
+      prisma.node.findMany({
+        where: {
+          creatorScore: { gt: 0 },
+          user: { creatorProfile: { status: 'APPROVED' } },
+        },
+        orderBy: { creatorScore: 'desc' },
+        take: limit,
+        select: {
+          creatorScore: true,
+          user: {
+            select: {
+              id: true,
+              walletAddress: true,
+              creatorProfile: {
+                select: {
+                  twitterUsername: true,
+                  _count: { select: { submissions: { where: { status: 'APPROVED' } } } },
+                },
+              },
+            },
+          },
+        },
+      }),
+      prisma.node.count({
+        where: {
+          creatorScore: { gt: 0 },
+          user: { creatorProfile: { status: 'APPROVED' } },
+        },
+      }),
+    ])
+
+    const totalScore = nodes.reduce((sum, n) => sum + n.creatorScore, BigInt(0))
+
+    const entries: CreatorLeaderboardEntry[] = nodes.map((n, i) => {
+      const score = n.creatorScore
+      const sharePct =
+        totalScore > BigInt(0)
+          ? Number((score * BigInt(10000)) / totalScore) / 100
+          : 0
+      return {
+        rank: i + 1,
+        userId: n.user.id,
+        walletAddress: n.user.walletAddress,
+        twitterUsername: n.user.creatorProfile?.twitterUsername ?? null,
+        creatorScore: score.toString(),
+        sharePct,
+        submissionCount: n.user.creatorProfile?._count.submissions ?? 0,
+      }
+    })
+
+    if (entries.length > 0) {
       await redis.set(cacheKey, { entries, total }, config.cache.leaderboardTTL)
     }
     return { entries, total }

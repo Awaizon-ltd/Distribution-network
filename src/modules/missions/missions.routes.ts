@@ -8,6 +8,7 @@ const router = Router()
 router.use(authenticate)
 
 router.get('/', missionsController.getActiveMissions.bind(missionsController))
+router.post('/:id/go', strictRateLimit, missionsController.go.bind(missionsController))
 router.post('/:id/start', strictRateLimit, missionsController.start.bind(missionsController))
 router.post('/:id/complete', strictRateLimit, missionsController.complete.bind(missionsController))
 router.post('/:id/claim', strictRateLimit, missionsController.claim.bind(missionsController))

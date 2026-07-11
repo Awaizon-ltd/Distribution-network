@@ -38,6 +38,15 @@ class MissionsController {
       next(error)
     }
   }
+
+  async go(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await missionsService.goMission(req.user!.id, req.params.id as string)
+      sendSuccess(res, result, `Reward of ${result.pointsEarned} pts claimed`)
+    } catch (error) {
+      next(error)
+    }
+  }
 }
 
 export const missionsController = new MissionsController()

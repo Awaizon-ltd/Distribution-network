@@ -52,6 +52,15 @@ class AdminController {
     }
   }
 
+  async listMissions(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const missions = await adminService.listMissions()
+      sendSuccess(res, missions)
+    } catch (error) {
+      next(error)
+    }
+  }
+
   async createMission(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const mission = await adminService.createMission(req.body)
@@ -65,6 +74,15 @@ class AdminController {
     try {
       const mission = await adminService.updateMission(req.params.id as string, req.body)
       sendSuccess(res, mission, 'Mission updated')
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  async deleteMission(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await adminService.deleteMission(req.params.id as string)
+      sendSuccess(res, null, 'Mission deleted')
     } catch (error) {
       next(error)
     }

@@ -126,6 +126,63 @@ class MissionsService {
     return ['DAILY', 'WEEKLY', 'SOCIAL', 'COMMUNITY', 'REFERRAL', 'SPECIAL']
   }
 
+  async goMission(userId: string, missionId: string): Promise<{ pointsEarned: number }> {
+    const lockKey = `lock:mission:go:${userId}:${missionId}`
+    const acquired = await redis.lock(lockKey, 30)
+    if (!acquired) throw new ConflictError('Request already in progress')
+
+    try {
+      const mission = await prisma.mission.findFirst({
+        where: {
+          id: missionId,
+          status: 'ACTIVE',
+          OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }],
+        },
+      })
+      if (!mission) throw new NotFoundError('Mission not found or expired')
+
+      const existing = await prisma.missionCompletion.findUnique({
+        where: { userId_missionId: { userId, missionId } },
+      })
+      if (existing?.status === 'CLAIMED') throw new ConflictError('Mission already completed')
+
+      const pointsEarned = mission.points + mission.bonusPoints
+      const now = new Date()
+
+      await prisma.missionCompletion.upsert({
+        where: { userId_missionId: { userId, missionId } },
+        create: { userId, missionId, status: 'CLAIMED', progress: mission.requiredCount, completedAt: now, claimedAt: now, pointsEarned },
+        update: { status: 'CLAIMED', progress: mission.requiredCount, completedAt: now, claimedAt: now, pointsEarned },
+      })
+
+      const missionType = mission.type as string
+      const scoreKey = MISSION_SCORE_SOURCE[missionType] ?? 'MISSION_DAILY'
+      const scoreAmount = (mission as never as { nodeScoreReward?: number }).nodeScoreReward ?? SCORE_VALUES[scoreKey]
+
+      await nodesService.addScore(
+        userId,
+        scoreAmount,
+        `MISSION_${missionType}` as never,
+        `Completed mission: ${mission.title}`,
+        missionId,
+      )
+
+      await redis.del(`missions:user:${userId}`)
+      return { pointsEarned }
+    } finally {
+      await redis.del(lockKey)
+    }
+  }
+
+  async listAll() {
+    const missions = await prisma.mission.findMany({
+      where: { status: { not: 'ARCHIVED' } },
+      orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { completions: { where: { status: 'CLAIMED' } } } } },
+    })
+    return missions
+  }
+
   async createMission(data: {
     title: string
     description: string
@@ -133,11 +190,16 @@ class MissionsService {
     points: number
     bonusPoints?: number
     requiredCount?: number
+    link?: string
+    platform?: string
     imageUrl?: string
     startsAt?: Date
     endsAt?: Date
   }) {
-    return prisma.mission.create({ data: data as never })
+    const mission = await prisma.mission.create({
+      data: { ...data, status: 'ACTIVE' } as never,
+    })
+    return mission
   }
 
   async updateMission(id: string, data: Partial<{

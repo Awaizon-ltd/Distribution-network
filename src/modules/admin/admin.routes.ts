@@ -34,8 +34,10 @@ router.post('/users/:id/reinstate', adminController.reinstateUser.bind(adminCont
 router.post('/users/:id/points', validateBody(adjustPointsSchema), adminController.adjustPoints.bind(adminController))
 
 // Missions
+router.get('/missions', adminController.listMissions.bind(adminController))
 router.post('/missions', adminController.createMission.bind(adminController))
 router.put('/missions/:id', adminController.updateMission.bind(adminController))
+router.delete('/missions/:id', adminController.deleteMission.bind(adminController))
 
 // News
 router.post('/news', adminController.createNews.bind(adminController))

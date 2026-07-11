@@ -77,6 +77,7 @@ enum NewsCategory {
 }
 
 enum NotificationType {
+  MISSION_AVAILABLE
   MISSION_COMPLETE
   REFERRAL_REWARD
   RANK_CHANGE
@@ -379,10 +380,12 @@ model Mission {
   description   String
   type          MissionType
   status        MissionStatus @default(DRAFT)
-  points        Int           // Legacy points (will be multiplied by nodeMultiplier)
-  nodeScoreReward Int         @default(20) // Fixed nodeScore awarded regardless of multiplier
+  points        Int
+  nodeScoreReward Int         @default(20)
   bonusPoints   Int           @default(0)
   requiredCount Int           @default(1)
+  link          String?
+  platform      String?
   imageUrl      String?
   metadata      Json?
   startsAt      DateTime?

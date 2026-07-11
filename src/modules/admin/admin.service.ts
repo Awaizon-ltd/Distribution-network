@@ -4,6 +4,7 @@ import { pointsService } from '../points/points.service'
 import { missionsService } from '../missions/missions.service'
 import { newsService } from '../news/news.service'
 import { NotFoundError } from '../../utils/errors'
+import { addNotificationJob } from '../../queue'
 
 class AdminService {
   // ─── Users ────────────────────────────────────────────────────────────────
@@ -89,8 +90,15 @@ class AdminService {
 
   // ─── Missions ─────────────────────────────────────────────────────────────
 
+  async listMissions() {
+    return missionsService.listAll()
+  }
+
   async createMission(data: object) {
-    return missionsService.createMission(data as never)
+    const mission = await missionsService.createMission(data as never)
+    // Broadcast to all active users async — fire and forget
+    this.broadcastMissionNotification(mission).catch(() => {})
+    return mission
   }
 
   async updateMission(id: string, data: object) {
@@ -99,6 +107,27 @@ class AdminService {
 
   async deleteMission(id: string): Promise<void> {
     await missionsService.updateMission(id, { status: 'ARCHIVED' } as never)
+  }
+
+  private async broadcastMissionNotification(mission: { id: string; title: string; points: number; endsAt?: Date | null }) {
+    const users = await prisma.user.findMany({
+      where: { status: 'ACTIVE' },
+      select: { id: true },
+    })
+    const expiryNote = mission.endsAt
+      ? ` Expires ${new Date(mission.endsAt).toLocaleDateString()}.`
+      : ''
+    await Promise.all(
+      users.map(u =>
+        addNotificationJob({
+          userId: u.id,
+          type: 'MISSION_AVAILABLE',
+          title: 'New Mission Available',
+          message: `${mission.title} — Earn ${mission.points} pts.${expiryNote}`,
+          data: { missionId: mission.id },
+        }),
+      ),
+    )
   }
 
   // ─── News ─────────────────────────────────────────────────────────────────
